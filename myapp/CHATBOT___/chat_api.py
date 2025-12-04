@@ -50,8 +50,13 @@ def chat(payload: ChatRequest) -> ChatResponse:
                     )
             else:
                 add_topic(prompt[:40])
+                logger.info(
+                    f"Chat reply length: {len(reply)} chars. First 100 chars: {reply[:100]}"
+                )
                 return ChatResponse(reply=reply)
 
         time.sleep(BASE_BACKOFF * (2 ** (attempt - 1)))
 
-    raise HTTPException(status_code=503, detail="Chatbot temporarily unavailable; please retry shortly.")
+    raise HTTPException(
+        status_code=503, detail="Chatbot temporarily unavailable; please retry shortly."
+    )

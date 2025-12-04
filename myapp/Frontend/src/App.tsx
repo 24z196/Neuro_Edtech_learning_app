@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LoginScreen } from './components/LoginScreen';
 import { LearningZone } from './components/LearningZone';
 import { Dashboard } from './components/Dashboard';
@@ -38,44 +38,64 @@ export interface UserProfile {
 }
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Initialize state from localStorage
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('isLoggedIn') === 'true';
+  });
   const [currentScreen, setCurrentScreen] = useState<Screen>('learning');
   const [cognitiveState, setCognitiveState] = useState<CognitiveState>('attention');
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: 'Alex',
-    userType: 'normal',
-    level: 7,
-    xp: 2450,
-    xpToNextLevel: 3000,
-    totalXP: 15450,
-    badges: 12,
-    coins: 2500,
-    avatar: {
-      hair: 'short-modern',
-      eyes: 'friendly',
-      skinTone: 'medium',
-      top: 'hoodie',
-      bottom: 'jeans',
-      headwear: 'none',
-      eyewear: 'none',
-      footwear: 'sneakers',
-      backpack: 'none',
-      accessories: ['bci-headset']
-    },
-    inventory: ['short-modern', 'long-wavy', 'friendly', 'light', 'medium', 'dark', 'hoodie', 't-shirt', 'bci-headset']
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem('userProfile');
+    return saved ? JSON.parse(saved) : {
+      name: 'Alex',
+      userType: 'normal',
+      level: 7,
+      xp: 2450,
+      xpToNextLevel: 3000,
+      totalXP: 15450,
+      badges: 12,
+      coins: 2500,
+      avatar: {
+        hair: 'short-modern',
+        eyes: 'friendly',
+        skinTone: 'medium',
+        top: 'hoodie',
+        bottom: 'jeans',
+        headwear: 'none',
+        eyewear: 'none',
+        footwear: 'sneakers',
+        backpack: 'none',
+        accessories: ['bci-headset']
+      },
+      inventory: ['short-modern', 'long-wavy', 'friendly', 'light', 'medium', 'dark', 'hoodie', 't-shirt', 'bci-headset']
+    };
   });
+
+  // Persist login state and user profile to localStorage
+  useEffect(() => {
+    localStorage.setItem('isLoggedIn', isLoggedIn.toString());
+    if (isLoggedIn) {
+      localStorage.setItem('userProfile', JSON.stringify(userProfile));
+    }
+  }, [isLoggedIn, userProfile]);
 
   const handleLogin = (name: string, userType: UserType) => {
     setUserProfile(prev => ({ ...prev, name, userType }));
     setIsLoggedIn(true);
   };
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userProfile');
+  };
+
   const addXP = (amount: number) => {
     setUserProfile(prev => {
       const newXP = prev.xp + amount;
       const newTotalXP = prev.totalXP + amount;
-      
+
       if (newXP >= prev.xpToNextLevel) {
         return {
           ...prev,
@@ -85,7 +105,7 @@ export default function App() {
           totalXP: newTotalXP
         };
       }
-      
+
       return {
         ...prev,
         xp: newXP,
@@ -113,24 +133,25 @@ export default function App() {
     <div className={`flex h-screen overflow-hidden ${themeMode === 'light' ? 'bg-gray-50' : 'bg-black'}`}>
       {/* Mood Emoji Indicator */}
       <MoodEmoji cognitiveState={cognitiveState} />
-      
-      <Sidebar 
-        currentScreen={currentScreen} 
+
+      <Sidebar
+        currentScreen={currentScreen}
         onNavigate={setCurrentScreen}
         themeMode={themeMode}
       />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        <GamificationHeader 
+        <GamificationHeader
           userProfile={userProfile}
           cognitiveState={cognitiveState}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
+          onLogout={handleLogout}
         />
-        
+
         <main className="flex-1 overflow-auto">
           {currentScreen === 'learning' && (
-            <LearningZone 
+            <LearningZone
               cognitiveState={cognitiveState}
               setCognitiveState={setCognitiveState}
               userType={userProfile.userType}
@@ -143,7 +164,7 @@ export default function App() {
             <Dashboard userProfile={userProfile} themeMode={themeMode} />
           )}
           {currentScreen === 'profile' && (
-            <Profile 
+            <Profile
               userProfile={userProfile}
               setUserProfile={setUserProfile}
               onNavigateToStore={() => setCurrentScreen('store')}
@@ -151,7 +172,7 @@ export default function App() {
             />
           )}
           {currentScreen === 'store' && (
-            <Store 
+            <Store
               userProfile={userProfile}
               setUserProfile={setUserProfile}
               themeMode={themeMode}
