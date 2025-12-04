@@ -1,0 +1,39 @@
+﻿# -------- Node.js --------
+node_modules/
+**/node_modules/
+
+# Build files
+build/
+dist/
+
+# Frontend outputs
+.vite/
+.vite-cache/
+
+# -------- Python --------
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Chatbot cache
+tts_cache/
+*.mp3
+neuro_memory.json
+
+# -------- Environment & secrets --------
+.env
+*.log
+
+# IDE/Editor
+.vscode/
+.idea/
+
+# Temporary files
+uploads/
+*.tmp
+
+# ML model weights (optional)
+myapp/ML/*.json
+!myapp/ML/package.json
+!myapp/ML/package-lock.json
