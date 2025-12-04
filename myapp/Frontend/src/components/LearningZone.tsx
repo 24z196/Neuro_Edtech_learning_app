@@ -13,11 +13,12 @@ interface LearningZoneProps {
   cognitiveState: CognitiveState;
   setCognitiveState: (state: CognitiveState) => void;
   userType: UserType;
+  userId: string;
   addXP: (amount: number) => void;
   themeMode: ThemeMode;
 }
 
-export function LearningZone({ cognitiveState, setCognitiveState, userType, addXP, themeMode }: LearningZoneProps) {
+export function LearningZone({ cognitiveState, setCognitiveState, userType, addXP, themeMode, userId }: LearningZoneProps) {
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
     { role: 'assistant', content: 'Hello! I\'m BrainBuddy, your adaptive learning companion. What would you like to learn today?' }
@@ -30,13 +31,14 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
     setChatHistory(prev => [...prev, { role: 'user', content: msg }]);
     setMessage('');
     try {
-      const res = await fetch('http://localhost:5000/api/chat', {
+      const res = await fetch('http://localhost:4000/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: msg,
           profile: userType,
-          state: cognitiveState
+          state: cognitiveState,
+          userId
         })
       });
       const data = await res.json();

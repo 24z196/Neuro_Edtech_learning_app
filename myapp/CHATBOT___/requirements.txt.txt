@@ -1,0 +1,11 @@
+fastapi==0.110.0
+uvicorn[standard]==0.23.2
+python-dotenv==1.0.0
+google-generativeai==0.5.2
+speechrecognition==3.14.4
+pyttsx3==2.91
+Pillow==10.0.0
+pypdf==3.17.0
+python-docx==0.8.13
+python-pptx==0.6.21
+pytesseract==0.3.12

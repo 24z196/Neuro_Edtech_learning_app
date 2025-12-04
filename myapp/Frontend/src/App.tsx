@@ -134,6 +134,7 @@ export default function App() {
               cognitiveState={cognitiveState}
               setCognitiveState={setCognitiveState}
               userType={userProfile.userType}
+              userId={userProfile.name}
               addXP={addXP}
               themeMode={themeMode}
             />

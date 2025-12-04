@@ -1,0 +1,14 @@
+{
+  "name": "neuro-ml-server",
+  "version": "0.1.0",
+  "private": true,
+  "main": "ml_server.js",
+  "scripts": {
+    "start": "node ml_server.js",
+    "dev": "node ml_server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}
