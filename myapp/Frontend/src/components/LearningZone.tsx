@@ -6,7 +6,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, Camera, Brain, Wind, Gamepad2, BookOpen, Lightbulb, HelpCircle, Mic, Square } from 'lucide-react';
+import { Send, Paperclip, Camera, Brain, Wind, Gamepad2, BookOpen, Lightbulb, HelpCircle, Mic, Square, MessageSquare } from 'lucide-react';
 import { Button } from './ui/button';
 import { CognitiveState, UserType, ThemeMode } from '../App';
 import { MiniQuizModal } from './interventions/MiniQuizModal';
@@ -22,20 +22,25 @@ interface LearningZoneProps {
   userId: string;
   addXP: (amount: number) => void;
   themeMode: ThemeMode;
+  historyOpen: boolean;
+  onOpenHistory: () => void;
+  onCloseHistory: () => void;
 }
 
-export function LearningZone({ cognitiveState, setCognitiveState, userType, addXP, themeMode, userId }: LearningZoneProps) {
+export function LearningZone({ cognitiveState, setCognitiveState, userType, addXP, themeMode, userId, historyOpen, onOpenHistory, onCloseHistory }: LearningZoneProps) {
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
     { role: 'assistant', content: 'Hello! I\'m BrainBuddy, your adaptive learning companion. What would you like to learn today?' }
   ]);
+  const [queuedFiles, setQueuedFiles] = useState<File[]>([]);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [queuedFile, setQueuedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null);
+  const [sessionId] = useState(() => `session-${Date.now()}`);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const musicTracks = [
     '/ambient-music-1.mp3',
@@ -81,24 +86,38 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
     };
   }, []);
 
-  // Persist chat history per userId
+  // Persist chat sessions per userId (new session each load/login)
   useEffect(() => {
-    const key = `chat-history:${userId}`;
+    const key = `chat-sessions:${userId}`;
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
-        setChatHistory(JSON.parse(saved));
+        const sessions = JSON.parse(saved) as Array<{ id: string; createdAt: number; messages: any[] }>;
+        const latest = sessions[sessions.length - 1];
+        if (latest) {
+          setChatHistory(latest.messages || chatHistory);
+          setSelectedSessionId(latest.id);
+        }
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   useEffect(() => {
-    const key = `chat-history:${userId}`;
+    const key = `chat-sessions:${userId}`;
     try {
-      localStorage.setItem(key, JSON.stringify(chatHistory));
+      const saved = localStorage.getItem(key);
+      let sessions: Array<{ id: string; createdAt: number; messages: any[] }> = saved ? JSON.parse(saved) : [];
+      const idx = sessions.findIndex(s => s.id === sessionId);
+      if (idx >= 0) {
+        sessions[idx] = { ...sessions[idx], messages: chatHistory };
+      } else {
+        sessions.push({ id: sessionId, createdAt: Date.now(), messages: chatHistory });
+      }
+      sessions = sessions.slice(-20);
+      localStorage.setItem(key, JSON.stringify(sessions));
     } catch {}
-  }, [chatHistory, userId]);
+  }, [chatHistory, userId, sessionId]);
 
   // When the currentTrackIndex changes, update the audio src and play if currently playing
   useEffect(() => {
@@ -160,7 +179,8 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
           message: msg,
           profile: userType,
           state: cognitiveState,
-          userId
+          userId,
+          history: chatHistory.slice(-10),
         }),
         signal: ctrl.signal
       });
@@ -176,12 +196,16 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
 
   // 3. Handle file upload
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Queue file; send only when user clicks Send
-      setQueuedFile(file);
-      setChatHistory(prev => [...prev, { role: 'user', content: `Selected file: ${file.name} (click Send to summarize)` }]);
+    const files = Array.from(event.target.files || []);
+    if (files.length) {
+      setQueuedFiles(prev => [...prev, ...files]);
+      setChatHistory(prev => [
+        ...prev,
+        ...files.map(f => ({ role: 'user' as const, content: `Selected file: ${f.name} (click Send to summarize)` }))
+      ]);
     }
+    // allow re-select same file
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const uploadFile = async (file: File) => {
@@ -319,23 +343,28 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
 
   const theme = stateThemes[cognitiveState];
 
+  const uploadAllQueued = async () => {
+    for (const f of queuedFiles) {
+      await uploadFile(f);
+    }
+    setQueuedFiles([]);
+  };
+
   const handleSendMessage = async () => {
     if (isProcessing) return;
     const trimmed = message.trim();
-    // If there's a queued file and no text, just upload the file
-    if (queuedFile && !trimmed) {
-      await uploadFile(queuedFile);
-      setQueuedFile(null);
+
+    if (queuedFiles.length && !trimmed) {
+      await uploadAllQueued();
       return;
     }
-    // If both text and file are present, upload the file first, then send the text
-    if (queuedFile && trimmed) {
-      await uploadFile(queuedFile);
-      setQueuedFile(null);
+
+    if (queuedFiles.length && trimmed) {
+      await uploadAllQueued();
       await sendMessageToBackend(trimmed);
       return;
     }
-    // Only text
+
     if (trimmed) {
       await sendMessageToBackend(trimmed);
     }
@@ -515,6 +544,51 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
             </AnimatePresence>
           </div>
 
+          {historyOpen && (
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm z-20 flex items-start justify-start">
+              <div className={`mt-8 ml-6 w-[360px] max-h-[80vh] overflow-hidden rounded-2xl shadow-2xl ${themeMode === 'light' ? 'bg-white' : 'bg-gray-900 text-white'}`}>
+                <div className="flex justify-between items-center px-4 py-3 border-b border-white/10">
+                  <h3 className="text-md font-semibold">Chat History</h3>
+                  <Button variant="ghost" size="sm" onClick={onCloseHistory}>Close</Button>
+                </div>
+                <div className="flex h-[65vh]">
+                  <div className="w-40 border-r border-white/10 overflow-y-auto p-3 space-y-2">
+                    {(() => {
+                      const key = `chat-sessions:${userId}`;
+                      const saved = localStorage.getItem(key);
+                      const sessions = saved ? JSON.parse(saved) as Array<{id:string;createdAt:number;messages:any[]}> : [];
+                      return sessions.map(sess => (
+                        <button
+                          key={sess.id}
+                          onClick={() => setSelectedSessionId(sess.id)}
+                          className={`w-full text-left text-sm px-2 py-2 rounded ${selectedSessionId === sess.id ? 'bg-purple-600 text-white' : (themeMode === 'light' ? 'bg-gray-100' : 'bg-white/5 text-gray-100')}`}
+                        >
+                          {new Date(sess.createdAt).toLocaleString()}
+                        </button>
+                      ));
+                    })()}
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {(() => {
+                      const key = `chat-sessions:${userId}`;
+                      const saved = localStorage.getItem(key);
+                      const sessions = saved ? JSON.parse(saved) as Array<{id:string;createdAt:number;messages:any[]}> : [];
+                      const target = sessions.find(s => s.id === selectedSessionId) || sessions[sessions.length -1];
+                      const msgs = target?.messages || [];
+                      return msgs.map((msg: any, idx: number) => (
+                        <div key={`history-${idx}`} className={`${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                          <div className={`inline-block px-3 py-2 rounded-lg ${msg.role === 'user' ? 'bg-purple-500 text-white' : (themeMode === 'light' ? 'bg-gray-200 text-gray-900' : 'bg-white/10 text-gray-100')}`}>
+                            <strong className="mr-2">{msg.role === 'user' ? 'You' : 'Assistant'}:</strong> {msg.content}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Input Bar */}
           <div className={`border-t p-4 ${themeMode === 'light' ? 'border-gray-300' : 'border-white/10'}`}>
             <div className="flex items-center gap-3">
@@ -542,6 +616,16 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                   className={`${isCameraOpen ? 'text-purple-400' : (themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white')}`}
                 >
                   <Camera className="w-6 h-6" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onOpenHistory}
+                  className={themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white'}
+                  title="View chat history"
+                  aria-label="View chat history"
+                >
+                  <MessageSquare className="w-6 h-6" />
                 </Button>
               </div>
 

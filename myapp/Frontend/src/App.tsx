@@ -13,6 +13,7 @@ export type CognitiveState = 'attention' | 'calm' | 'drowsiness';
 export type UserType = 'normal' | 'adhd';
 export type Screen = 'login' | 'learning' | 'dashboard' | 'avatar' | 'store' | 'settings';
 export type ThemeMode = 'light' | 'dark' | 'dynamic';
+type FontSize = 'small' | 'normal' | 'large';
 
 export interface UserProfile {
   name: string;
@@ -46,6 +47,22 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('learning');
   const [cognitiveState, setCognitiveState] = useState<CognitiveState>('attention');
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    return localStorage.getItem('notificationsEnabled') === 'true';
+  });
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem('soundEnabled') === 'true';
+  });
+  const [fontSize, setFontSize] = useState<FontSize>(() => {
+    return (localStorage.getItem('fontSize') as FontSize) || 'normal';
+  });
+  const [soundVolume, setSoundVolume] = useState(() => {
+    return Number(localStorage.getItem('soundVolume') || 70);
+  });
+  const [notificationVolume, setNotificationVolume] = useState(() => {
+    return Number(localStorage.getItem('notificationVolume') || 70);
+  });
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     const saved = localStorage.getItem('userProfile');
     return saved ? JSON.parse(saved) : {
@@ -80,6 +97,14 @@ export default function App() {
       localStorage.setItem('userProfile', JSON.stringify(userProfile));
     }
   }, [isLoggedIn, userProfile]);
+
+  useEffect(() => {
+    localStorage.setItem('notificationsEnabled', notificationsEnabled.toString());
+    localStorage.setItem('soundEnabled', soundEnabled.toString());
+    localStorage.setItem('fontSize', fontSize);
+    localStorage.setItem('soundVolume', soundVolume.toString());
+    localStorage.setItem('notificationVolume', notificationVolume.toString());
+  }, [notificationsEnabled, soundEnabled, fontSize, soundVolume, notificationVolume]);
 
   const handleLogin = (name: string, userType: UserType) => {
     setUserProfile(prev => ({ ...prev, name, userType }));
@@ -126,6 +151,18 @@ export default function App() {
     return false;
   };
 
+  // Map Store updates (partial profile) back into the full user profile shape
+  const handleStoreProfileUpdate = (updated: { name: string; xp: number; totalXP: number; inventory: string[]; avatar: { top?: string; hair?: string; footwear?: string } }) => {
+    setUserProfile(prev => ({
+      ...prev,
+      name: updated.name ?? prev.name,
+      xp: updated.xp ?? prev.xp,
+      totalXP: updated.totalXP ?? prev.totalXP,
+      inventory: updated.inventory ?? prev.inventory,
+      avatar: { ...prev.avatar, ...updated.avatar }
+    }));
+  };
+
   // Sync initial XP to localStorage for Store if not present
   useEffect(() => {
     const hasXP = localStorage.getItem('user-xp');
@@ -153,6 +190,7 @@ export default function App() {
         currentScreen={currentScreen}
         onNavigate={setCurrentScreen}
         themeMode={themeMode}
+        onShowHistory={() => setHistoryOpen(true)}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -173,30 +211,112 @@ export default function App() {
               userId={userProfile.name}
               addXP={addXP}
               themeMode={themeMode}
+              historyOpen={historyOpen}
+              onOpenHistory={() => setHistoryOpen(true)}
+              onCloseHistory={() => setHistoryOpen(false)}
             />
           )}
           {currentScreen === 'dashboard' && (
             <Dashboard userProfile={userProfile} themeMode={themeMode} />
           )}
-          {currentScreen === 'profile' && (
-            <Profile
-              userProfile={userProfile}
-              setUserProfile={setUserProfile}
-              onNavigateToStore={() => setCurrentScreen('store')}
-              themeMode={themeMode}
-            />
-          )}
           {currentScreen === 'store' && (
             <Store
               userProfile={userProfile}
-              setUserProfile={setUserProfile}
-              themeMode={themeMode}
+              setUserProfile={handleStoreProfileUpdate}
+              themeMode={themeMode === 'light' ? 'light' : 'dark'}
             />
           )}
           {currentScreen === 'settings' && (
-            <div className={`p-8 ${themeMode === 'light' ? 'bg-white text-black' : ''}`}>
-              <h1 className="mb-4">Settings</h1>
-              <p className={themeMode === 'light' ? 'text-gray-600' : 'text-gray-400'}>Settings panel coming soon...</p>
+            <div className={`p-8 ${themeMode === 'light' ? 'bg-white text-black' : 'text-white'}`}>
+              <h1 className="mb-4 text-2xl font-bold bg-gradient-to-r from-blue-400 to-pink-500 bg-clip-text text-transparent">
+                Settings
+              </h1>
+
+              {/* Appearance */}
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold mb-2 bg-gradient-to-r from-blue-400 to-pink-500 bg-clip-text text-transparent">
+                  Appearance
+                </h2>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={themeMode === 'dark'}
+                    onChange={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
+                  />
+                  <span>Dark Mode</span>
+                </label>
+
+                <div className="mt-3">
+                  <p className="text-sm font-semibold mb-1">Font Size: {fontSize}</p>
+                  <div className="flex gap-2">
+                    {(['small', 'normal', 'large'] as FontSize[]).map(size => (
+                      <button
+                        key={size}
+                        className={`px-3 py-1 rounded border ${fontSize === size ? 'border-blue-500 text-blue-500' : 'border-gray-400 text-gray-500'}`}
+                        onClick={() => setFontSize(size)}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notifications */}
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold mb-2 bg-gradient-to-r from-blue-400 to-pink-500 bg-clip-text text-transparent">
+                  Notifications
+                </h2>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notificationsEnabled}
+                    onChange={() => setNotificationsEnabled(!notificationsEnabled)}
+                  />
+                  <span>Enable Notifications</span>
+                </label>
+
+                <div className="mt-3">
+                  <p className="text-sm font-semibold mb-1">
+                    Notification Sound Volume: {notificationVolume}%
+                  </p>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={notificationVolume}
+                    onChange={e => setNotificationVolume(Number(e.target.value))}
+                    className="w-64"
+                  />
+                </div>
+              </div>
+
+              {/* Sound */}
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold mb-2 bg-gradient-to-r from-blue-400 to-pink-500 bg-clip-text text-transparent">
+                  Sound
+                </h2>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={soundEnabled}
+                    onChange={() => setSoundEnabled(!soundEnabled)}
+                  />
+                  <span>Enable Sound Effects</span>
+                </label>
+
+                <div className="mt-3">
+                  <p className="text-sm font-semibold mb-1">Sound Volume: {soundVolume}%</p>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={soundVolume}
+                    onChange={e => setSoundVolume(Number(e.target.value))}
+                    className="w-64"
+                  />
+                </div>
+              </div>
             </div>
           )}
         </main>

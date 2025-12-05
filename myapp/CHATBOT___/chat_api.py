@@ -20,6 +20,8 @@ class ChatRequest(BaseModel):
     message: str
     profile: str = "normal"
     state: str = "calm"
+    userId: str | None = None
+    history: list[dict] | None = None  # [{role: 'user'|'assistant', content: str}]
 
 
 class ChatResponse(BaseModel):
@@ -42,7 +44,16 @@ BASE_BACKOFF = 0.8
 
 
 def _call_adaptive(payload: ChatRequest) -> str:
-    return adaptive(payload.profile, payload.state, payload.message.strip())
+    history_text = None
+    if payload.history:
+        # flatten last 10 entries into text blocks
+        pairs = []
+        for item in payload.history[-10:]:
+          role = item.get("role", "user")
+          content = item.get("content", "")
+          pairs.append(f"{role}: {content}")
+        history_text = "\n".join(pairs)
+    return adaptive(payload.profile, payload.state, payload.message.strip(), history_text)
 
 
 @app.post("/api/chat", response_model=ChatResponse)

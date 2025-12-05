@@ -6,6 +6,7 @@ interface SidebarProps {
   currentScreen: Screen;
   onNavigate: (screen: Screen) => void;
   themeMode: ThemeMode;
+  onShowHistory?: () => void;
 }
 
 const navItems = [
@@ -16,7 +17,7 @@ const navItems = [
   { id: 'settings' as Screen, icon: Settings, label: 'Settings' },
 ];
 
-export function Sidebar({ currentScreen, onNavigate, themeMode }: SidebarProps) {
+export function Sidebar({ currentScreen, onNavigate, themeMode, onShowHistory }: SidebarProps) {
   return (
     <div className={`w-20 lg:w-64 border-r flex flex-col ${
       themeMode === 'light'
@@ -84,6 +85,7 @@ export function Sidebar({ currentScreen, onNavigate, themeMode }: SidebarProps) 
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
+          onClick={onShowHistory}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
             themeMode === 'light' ? 'hover:bg-gray-200' : 'hover:bg-white/5'
           }`}
