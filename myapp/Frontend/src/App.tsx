@@ -86,7 +86,6 @@ export default function App() {
     setIsLoggedIn(true);
   };
 
-<<<<<<< HEAD
   const handleLogout = () => {
     setIsLoggedIn(false);
     localStorage.removeItem('isLoggedIn');
@@ -114,28 +113,6 @@ export default function App() {
         totalXP: newTotalXP
       };
     });
-=======
-  const addXP = async (amount: number) => {
-    try {
-      const res = await fetch('http://localhost:5000/api/user/addXP', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userProfile.name, amount })
-      });
-      if (!res.ok) throw new Error('Failed to persist XP');
-      const updated = await res.json();
-      setUserProfile(updated);
-    } catch {
-      // Fallback to local update if backend not available
-      setUserProfile(prev => {
-        const newXP = prev.xp + amount;
-        const newTotalXP = prev.totalXP + amount;
-        if (newXP >= prev.xpToNextLevel) {
-          return { ...prev, level: prev.level + 1, xp: newXP - prev.xpToNextLevel, xpToNextLevel: prev.xpToNextLevel + 500, totalXP: newTotalXP };
-        }
-        return { ...prev, xp: newXP, totalXP: newTotalXP };
-      });
-    }
->>>>>>> branch_peru
   };
 
   const spendXP = (amount: number): boolean => {
@@ -201,7 +178,6 @@ export default function App() {
           {currentScreen === 'dashboard' && (
             <Dashboard userProfile={userProfile} themeMode={themeMode} />
           )}
-<<<<<<< HEAD
           {currentScreen === 'profile' && (
             <Profile
               userProfile={userProfile}
@@ -216,19 +192,6 @@ export default function App() {
               setUserProfile={setUserProfile}
               themeMode={themeMode}
             />
-=======
-          {currentScreen === 'avatar' && (
-            <ErrorBoundary>
-              <div className={`p-2 ${themeMode === 'light' ? 'bg-white text-black' : ''}`}>
-                <Avatar />
-              </div>
-            </ErrorBoundary>
-          )}
-          {currentScreen === 'store' && (
-            <ErrorBoundary>
-              <Store themeMode={themeMode} userProfile={userProfile as any} setUserProfile={setUserProfile as any} />
-            </ErrorBoundary>
->>>>>>> branch_peru
           )}
           {currentScreen === 'settings' && (
             <div className={`p-8 ${themeMode === 'light' ? 'bg-white text-black' : ''}`}>

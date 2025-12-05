@@ -1,15 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-<<<<<<< HEAD
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github.css';
-=======
->>>>>>> branch_peru
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, Camera, Brain, Wind, Gamepad2, BookOpen, Lightbulb, HelpCircle, Mic } from 'lucide-react';
+import { Send, Paperclip, Camera, Brain, Wind, Gamepad2, BookOpen, Lightbulb, HelpCircle, Mic, Square } from 'lucide-react';
 import { Button } from './ui/button';
 import { CognitiveState, UserType, ThemeMode } from '../App';
 import { MiniQuizModal } from './interventions/MiniQuizModal';
@@ -34,9 +31,11 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
   ]);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
-<<<<<<< HEAD
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [queuedFile, setQueuedFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null);
 
   const musicTracks = [
     '/ambient-music-1.mp3',
@@ -82,6 +81,25 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
     };
   }, []);
 
+  // Persist chat history per userId
+  useEffect(() => {
+    const key = `chat-history:${userId}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        setChatHistory(JSON.parse(saved));
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  useEffect(() => {
+    const key = `chat-history:${userId}`;
+    try {
+      localStorage.setItem(key, JSON.stringify(chatHistory));
+    } catch {}
+  }, [chatHistory, userId]);
+
   // When the currentTrackIndex changes, update the audio src and play if currently playing
   useEffect(() => {
     if (!audioRef.current) return;
@@ -93,13 +111,11 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
       });
     }
   }, [currentTrackIndex]);
-=======
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
->>>>>>> branch_peru
 
   // --- Speech Recognition Setup ---
   useEffect(() => {
@@ -134,6 +150,8 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
   const sendMessageToBackend = async (msg: string) => {
     setChatHistory(prev => [...prev, { role: 'user', content: msg }]);
     setMessage('');
+    const ctrl = new AbortController();
+    setAbortCtrl(ctrl); setIsProcessing(true);
     try {
       const res = await fetch('http://localhost:4000/api/chat', {
         method: 'POST',
@@ -143,12 +161,16 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
           profile: userType,
           state: cognitiveState,
           userId
-        })
+        }),
+        signal: ctrl.signal
       });
       const data = await res.json();
       setChatHistory(prev => [...prev, { role: 'assistant', content: data.reply || '(No response)' }]);
     } catch (err) {
+      if ((err as any)?.name === 'AbortError') return;
       setChatHistory(prev => [...prev, { role: 'assistant', content: 'Error contacting backend.' }]);
+    } finally {
+      setIsProcessing(false); setAbortCtrl(null);
     }
   };
 
@@ -156,7 +178,9 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      uploadFile(file);
+      // Queue file; send only when user clicks Send
+      setQueuedFile(file);
+      setChatHistory(prev => [...prev, { role: 'user', content: `Selected file: ${file.name} (click Send to summarize)` }]);
     }
   };
 
@@ -166,14 +190,20 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
     setChatHistory(prev => [...prev, { role: 'user', content: `Uploading and summarizing file: ${file.name}` }]);
 
     try {
+      const ctrl = new AbortController();
+      setAbortCtrl(ctrl); setIsProcessing(true);
       const res = await fetch('http://localhost:4000/api/upload-file', {
         method: 'POST',
         body: formData,
+        signal: ctrl.signal,
       });
       const data = await res.json();
       setChatHistory(prev => [...prev, { role: 'assistant', content: `**Summary from ${file.name}:**\n${data.summary}` }]);
     } catch (err) {
+      if ((err as any)?.name === 'AbortError') return;
       setChatHistory(prev => [...prev, { role: 'assistant', content: 'Error uploading or processing the file.' }]);
+    } finally {
+      setIsProcessing(false); setAbortCtrl(null);
     }
   };
 
@@ -211,17 +241,22 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
         
         setChatHistory(prev => [...prev, { role: 'user', content: 'Processing snapshot...' }]);
         try {
+          const ctrl = new AbortController();
+          setAbortCtrl(ctrl); setIsProcessing(true);
           const res = await fetch('http://localhost:4000/api/upload-snapshot', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image: imageBase64 }),
+            signal: ctrl.signal,
           });
           const data = await res.json();
           setChatHistory(prev => [...prev, { role: 'assistant', content: `**Summary from snapshot:**\n${data.summary}` }]);
         } catch (err) {
+          if ((err as any)?.name === 'AbortError') return;
           setChatHistory(prev => [...prev, { role: 'assistant', content: 'Error processing the snapshot.' }]);
         } finally {
           handleCameraToggle(); // Turn off camera after snapshot
+          setIsProcessing(false); setAbortCtrl(null);
         }
       }
     }
@@ -284,9 +319,25 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
 
   const theme = stateThemes[cognitiveState];
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      sendMessageToBackend(message);
+  const handleSendMessage = async () => {
+    if (isProcessing) return;
+    const trimmed = message.trim();
+    // If there's a queued file and no text, just upload the file
+    if (queuedFile && !trimmed) {
+      await uploadFile(queuedFile);
+      setQueuedFile(null);
+      return;
+    }
+    // If both text and file are present, upload the file first, then send the text
+    if (queuedFile && trimmed) {
+      await uploadFile(queuedFile);
+      setQueuedFile(null);
+      await sendMessageToBackend(trimmed);
+      return;
+    }
+    // Only text
+    if (trimmed) {
+      await sendMessageToBackend(trimmed);
     }
   };
 
@@ -468,11 +519,6 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
           <div className={`border-t p-4 ${themeMode === 'light' ? 'border-gray-300' : 'border-white/10'}`}>
             <div className="flex items-center gap-3">
               <div className="flex gap-2">
-<<<<<<< HEAD
-                <Button
-                  variant="ghost"
-                  size="icon"
-=======
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -483,30 +529,17 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                   variant="ghost" 
                   size="icon" 
                   onClick={() => fileInputRef.current?.click()}
->>>>>>> branch_peru
+                  disabled={isProcessing}
                   className={themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white'}
                 >
                   <Paperclip className="w-6 h-6" />
                 </Button>
-<<<<<<< HEAD
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white'}
-                >
-                  <Link2 className="w-6 h-6" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white'}
-=======
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   onClick={handleCameraToggle}
+                  disabled={isProcessing}
                   className={`${isCameraOpen ? 'text-purple-400' : (themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white')}`}
->>>>>>> branch_peru
                 >
                   <Camera className="w-6 h-6" />
                 </Button>
@@ -518,6 +551,7 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 placeholder="Ask me anything..."
+                disabled={isProcessing}
                 className={`flex-1 px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${themeMode === 'light'
                   ? 'bg-gray-100 border-gray-300 text-black placeholder-gray-500'
                   : 'bg-white/5 border-white/10 text-white placeholder-gray-500'
@@ -528,16 +562,34 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                 onClick={handleVoiceInput}
                 variant="ghost"
                 size="icon"
+                disabled={isProcessing}
                 className={isRecording ? 'text-red-500 animate-pulse' : (themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white')}
               >
                 <Mic className="w-6 h-6" />
               </Button>
-              <Button
-                onClick={handleSendMessage}
-                className={`bg-gradient-to-r ${theme.accent} hover:opacity-90 text-white px-6`}
-              >
-                <Send className="w-6 h-6" />
-              </Button>
+              {isProcessing ? (
+                <Button
+                  onClick={() => {
+                    try { abortCtrl?.abort(); } catch {}
+                    setIsProcessing(false); setAbortCtrl(null);
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: 'Stopped.' }]);
+                  }}
+                  variant="ghost"
+                  size="icon"
+                  className="text-red-500 hover:text-red-600"
+                  aria-label="Stop"
+                  title="Stop"
+                >
+                  <Square className="w-6 h-6" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSendMessage}
+                  className={`bg-gradient-to-r ${theme.accent} hover:opacity-90 text-white px-6`}
+                >
+                  <Send className="w-6 h-6" />
+                </Button>
+              )}
             </div>
           </div>
         </div>

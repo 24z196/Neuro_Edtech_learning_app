@@ -125,6 +125,11 @@ def call_model(prompt: str, model: str = PRIMARY_MODEL, cfg: dict | None = None)
 def adaptive(
     profile: str, state: str, user_input: str, history: str | None = None
 ) -> str:
+    # Lightweight casual greeting for very short inputs
+    ui = (user_input or "").strip().lower()
+    if ui in {"hi", "hii", "hello", "hey", "yo"} or len(ui) <= 3:
+        return "Hey! How can I help today?"
+
     base = f"""
 You are the NeuroAdaptive Learning Companion.
 
