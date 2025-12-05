@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { Trophy, Award, Zap, Sun, Moon, Brain } from 'lucide-react';
 import { UserProfile, CognitiveState, ThemeMode } from '../App';
-import { AvatarPreview } from './AvatarPreview';
 import { Button } from './ui/button';
 import { useState } from 'react';
 import { BCIConnectionModal } from './BCIConnectionModal';
@@ -147,9 +146,6 @@ export function GamificationHeader({ userProfile, cognitiveState, themeMode, set
               <div className={themeMode === 'light' ? 'text-black' : 'text-white'}>{userProfile.badges}</div>
             </div>
           </motion.div>
-
-          {/* Avatar Preview */}
-          <AvatarPreview avatar={userProfile.avatar} size="small" />
         </div>
       </div>
       <BCIConnectionModal isOpen={isBCIModalOpen} onClose={() => setBCIModalOpen(false)} />

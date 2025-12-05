@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from './ui/button';
 import { UserProfile, ThemeMode } from '../App';
-import { AvatarDisplay } from './AvatarDisplay';
 import { ShoppingBag, Check } from 'lucide-react';
 
 interface ProfileProps {
@@ -130,7 +129,7 @@ export function Profile({ userProfile, setUserProfile, onNavigateToStore, themeM
 
                 {/* Avatar Preview with Rotation Control */}
                 <div className="relative mb-6 w-full">
-                  <AvatarDisplay avatar={userProfile.avatar} />
+                  {/* Avatar display logic here */}
                 </div>
 
                 {/* Profile Info */}

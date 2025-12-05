@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Brain, MessageSquare, LayoutDashboard, Store as StoreIcon, User, Settings } from 'lucide-react';
+import { Brain, MessageSquare, LayoutDashboard, User, Settings } from 'lucide-react';
 import { Screen, ThemeMode } from '../App';
 
 interface SidebarProps {
@@ -11,8 +11,6 @@ interface SidebarProps {
 const navItems = [
   { id: 'learning' as Screen, icon: Brain, label: 'Learning Zone' },
   { id: 'dashboard' as Screen, icon: LayoutDashboard, label: 'Dashboard' },
-  { id: 'avatar' as Screen, icon: User, label: 'Avatar' },
-  { id: 'store' as Screen, icon: StoreIcon, label: 'Store' },
   { id: 'settings' as Screen, icon: Settings, label: 'Settings' },
 ];
 

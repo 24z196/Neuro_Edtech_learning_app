@@ -8,6 +8,7 @@ import { DeeperDiveModal } from './interventions/DeeperDiveModal';
 import { AnalogyCreatorModal } from './interventions/AnalogyCreatorModal';
 import { BreathingExerciseModal } from './interventions/BreathingExerciseModal';
 import { MiniGameModal } from './interventions/MiniGameModal';
+import MiniGame from './MiniGame';
 
 interface LearningZoneProps {
   cognitiveState: CognitiveState;
@@ -27,6 +28,7 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null); // Reference to audio element
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -57,6 +59,14 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
     }
   }, []);
 
+  // --- Music Playback Effect ---
+  useEffect(() => {
+    if (isPlayingMusic) {
+      audioRef.current?.play(); // Play music when isPlayingMusic is true
+    } else {
+      audioRef.current?.pause(); // Pause music when isPlayingMusic is false
+    }
+  }, [isPlayingMusic]);
 
   // --- Backend Communication Handlers ---
 
@@ -180,32 +190,19 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
 
   const stateThemes = {
     attention: {
-      bg:
-        themeMode === 'dynamic'
-          ? 'from-blue-950 via-gray-900 to-green-950'
-          : themeMode === 'light'
-          ? 'from-blue-50 via-gray-50 to-green-50'
-          : 'from-blue-950 via-gray-900 to-green-950',
+      bg: themeMode === 'light' ? 'from-blue-50 via-gray-50 to-green-50' : 'from-blue-950 via-gray-900 to-green-950',
       accent: 'from-blue-500 to-green-500',
       glow: 'shadow-blue-500/20',
       border: themeMode === 'light' ? 'border-blue-300' : 'border-blue-500/30',
     },
     calm: {
-      bg: themeMode === 'dynamic'
-        ? 'from-amber-950 via-gray-900 to-yellow-950'
-        : themeMode === 'light'
-        ? 'from-amber-50 via-gray-50 to-yellow-50'
-        : 'from-amber-950 via-gray-900 to-yellow-950',
+      bg: themeMode === 'light' ? 'from-amber-50 via-gray-50 to-yellow-50' : 'from-amber-950 via-gray-900 to-yellow-950',
       accent: 'from-amber-500 to-yellow-500',
       glow: 'shadow-amber-500/20',
       border: themeMode === 'light' ? 'border-amber-300' : 'border-amber-500/30',
     },
     drowsiness: {
-      bg: themeMode === 'dynamic'
-        ? 'from-orange-950 via-gray-900 to-red-950'
-        : themeMode === 'light'
-        ? 'from-orange-50 via-gray-50 to-red-50'
-        : 'from-orange-950 via-gray-900 to-red-950',
+      bg: themeMode === 'light' ? 'from-orange-50 via-gray-50 to-red-50' : 'from-orange-950 via-gray-900 to-red-950',
       accent: 'from-orange-500 to-red-500',
       glow: 'shadow-orange-500/20',
       border: themeMode === 'light' ? 'border-orange-300' : 'border-orange-500/30',
@@ -465,6 +462,8 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
         onClose={() => setActiveModal(null)}
         addXP={addXP}
       />
+      <audio ref={audioRef} src="/Billa%20Bgm.mp3" loop /> {/* Updated to use the correct file */}
+      {activeModal === 'mini-game' && <MiniGame />} {/* Render MiniGame when selected */}
     </motion.div>
   );
 }
