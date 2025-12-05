@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, Link2, Camera, Brain, Wind, Gamepad2, BookOpen, Lightbulb, HelpCircle } from 'lucide-react';
+import { Send, Paperclip, Camera, Brain, Wind, Gamepad2, BookOpen, Lightbulb, HelpCircle, Mic } from 'lucide-react';
 import { Button } from './ui/button';
 import { CognitiveState, UserType, ThemeMode } from '../App';
 import { MiniQuizModal } from './interventions/MiniQuizModal';
@@ -25,8 +25,42 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
   ]);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
-  // Send message to backend and update chat
+  // --- Speech Recognition Setup ---
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        sendMessageToBackend(transcript); // Send the transcript to the backend
+        setIsRecording(false);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setIsRecording(false);
+      };
+      
+      recognitionRef.current = recognition;
+    } else {
+      console.warn("Speech Recognition not supported in this browser.");
+    }
+  }, []);
+
+
+  // --- Backend Communication Handlers ---
+
+  // 1. Send a text message to the backend
   const sendMessageToBackend = async (msg: string) => {
     setChatHistory(prev => [...prev, { role: 'user', content: msg }]);
     setMessage('');
@@ -47,6 +81,103 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
       setChatHistory(prev => [...prev, { role: 'assistant', content: 'Error contacting backend.' }]);
     }
   };
+
+  // 3. Handle file upload
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadFile(file);
+    }
+  };
+
+  const uploadFile = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    setChatHistory(prev => [...prev, { role: 'user', content: `Uploading and summarizing file: ${file.name}` }]);
+
+    try {
+      const res = await fetch('http://localhost:4000/api/upload-file', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      setChatHistory(prev => [...prev, { role: 'assistant', content: `**Summary from ${file.name}:**\n${data.summary}` }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { role: 'assistant', content: 'Error uploading or processing the file.' }]);
+    }
+  };
+
+  // 4. Handle camera snapshot
+  const handleCameraToggle = async () => {
+    if (isCameraOpen) {
+      // Turn off camera
+      const stream = cameraVideoRef.current?.srcObject as MediaStream;
+      stream?.getTracks().forEach(track => track.stop());
+      setIsCameraOpen(false);
+    } else {
+      // Turn on camera
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (cameraVideoRef.current) {
+          cameraVideoRef.current.srcObject = stream;
+        }
+        setIsCameraOpen(true);
+      } catch (error) {
+        console.error("Error accessing camera:", error);
+        alert("Could not access the camera. Please ensure you have a webcam enabled and have granted permission.");
+      }
+    }
+  };
+
+  const handleSnapshot = async () => {
+    if (cameraVideoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = cameraVideoRef.current.videoWidth;
+      canvas.height = cameraVideoRef.current.videoHeight;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(cameraVideoRef.current, 0, 0, canvas.width, canvas.height);
+        const imageBase64 = canvas.toDataURL('image/jpeg');
+        
+        setChatHistory(prev => [...prev, { role: 'user', content: 'Processing snapshot...' }]);
+        try {
+          const res = await fetch('http://localhost:4000/api/upload-snapshot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageBase64 }),
+          });
+          const data = await res.json();
+          setChatHistory(prev => [...prev, { role: 'assistant', content: `**Summary from snapshot:**\n${data.summary}` }]);
+        } catch (err) {
+          setChatHistory(prev => [...prev, { role: 'assistant', content: 'Error processing the snapshot.' }]);
+        } finally {
+          handleCameraToggle(); // Turn off camera after snapshot
+        }
+      }
+    }
+  };
+
+  // 5. Handle Voice Input
+  const handleVoiceInput = () => {
+    if (recognitionRef.current) {
+      if (isRecording) {
+        recognitionRef.current.stop();
+        setIsRecording(false);
+      } else {
+        try {
+          recognitionRef.current.start();
+          setIsRecording(true);
+        } catch (error) {
+          console.error("Could not start speech recognition:", error);
+          setIsRecording(false);
+        }
+      }
+    } else {
+      alert("Sorry, your browser does not support voice recognition.");
+    }
+  };
+
+
   const stateThemes = {
     attention: {
       bg:
@@ -239,6 +370,12 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                   </div>
                 </motion.div>
               ))}
+              {isCameraOpen && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 bg-black/20 rounded-xl">
+                  <video ref={cameraVideoRef} autoPlay className="w-full rounded-lg" />
+                  <Button onClick={handleSnapshot} className="w-full mt-2 bg-purple-600 hover:bg-purple-700">Take Snapshot</Button>
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
 
@@ -246,9 +383,16 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
           <div className={`border-t p-4 ${themeMode === 'light' ? 'border-gray-300' : 'border-white/10'}`}>
             <div className="flex items-center gap-3">
               <div className="flex gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
                 <Button 
                   variant="ghost" 
                   size="icon" 
+                  onClick={() => fileInputRef.current?.click()}
                   className={themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white'}
                 >
                   <Paperclip className="w-6 h-6" />
@@ -256,14 +400,8 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className={themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white'}
-                >
-                  <Link2 className="w-6 h-6" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white'}
+                  onClick={handleCameraToggle}
+                  className={`${isCameraOpen ? 'text-purple-400' : (themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white')}`}
                 >
                   <Camera className="w-6 h-6" />
                 </Button>
@@ -282,6 +420,14 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                 }`}
               />
 
+              <Button
+                onClick={handleVoiceInput}
+                variant="ghost"
+                size="icon"
+                className={isRecording ? 'text-red-500 animate-pulse' : (themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white')}
+              >
+                <Mic className="w-6 h-6" />
+              </Button>
               <Button
                 onClick={handleSendMessage}
                 className={`bg-gradient-to-r ${theme.accent} hover:opacity-90 text-white px-6`}

@@ -1,0 +1,20 @@
+{
+  "name": "neuroedtech-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "frontend": "cd myapp/Frontend && npm run dev",
+    "backend": "cd myapp/backend && npm run dev",
+    "chatbot": "cd myapp/CHATBOT___ && python -m uvicorn chat_api:app --host 127.0.0.1 --port 8001",
+    "dev": "npx concurrently \"npm:frontend\" \"npm:backend\" \"npm:chatbot\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.2",
+    "@types/three": "^0.181.0",
+    "three": "^0.181.2"
+  }
+}
