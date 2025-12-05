@@ -61,22 +61,34 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
   const handleTrackEnd = () => {
     const nextIndex = (currentTrackIndex + 1) % musicTracks.length;
     setCurrentTrackIndex(nextIndex);
-    if (audioRef.current) {
-      audioRef.current.src = musicTracks[nextIndex];
-      audioRef.current.play().catch(() => {
-        console.error('Could not play next track');
-      });
-    }
   };
 
-  // Cleanup audio on unmount
+  // Cleanup audio on unmount and attach ended listener
   useEffect(() => {
+    const el = audioRef.current;
+    if (el) {
+      el.addEventListener('ended', handleTrackEnd);
+    }
+
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
+      if (el) {
+        el.removeEventListener('ended', handleTrackEnd);
+        el.pause();
       }
     };
   }, []);
+
+  // When the currentTrackIndex changes, update the audio src and play if currently playing
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.src = musicTracks[currentTrackIndex];
+    audioRef.current.load();
+    if (isPlayingMusic) {
+      audioRef.current.play().catch(() => {
+        console.error('Could not autoplay next track');
+      });
+    }
+  }, [currentTrackIndex]);
 
   // Send message to backend and update chat
   const sendMessageToBackend = async (msg: string) => {
@@ -389,7 +401,7 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
       <audio
         ref={audioRef}
         src={musicTracks[currentTrackIndex]}
-        style={{ display: 'none' }}
+        style={{ position: 'absolute', left: -9999, width: 0, height: 0 }}
         onEnded={handleTrackEnd}
       />
     </motion.div>
