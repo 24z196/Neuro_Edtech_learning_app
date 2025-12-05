@@ -6,6 +6,11 @@ speechrecognition==3.14.4
 pyttsx3==2.91
 Pillow==10.0.0
 pypdf==3.17.0
-python-docx==0.8.13
-python-pptx==0.6.21
+python-docx==1.2.0
+python-pptx==1.0.2
+beautifulsoup4==4.12.3
 pytesseract==0.3.12
+requests==2.32.5
+Flask==3.0.0
+flask-cors==4.0.0
+
