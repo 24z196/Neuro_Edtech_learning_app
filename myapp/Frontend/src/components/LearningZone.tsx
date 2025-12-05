@@ -1,4 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Paperclip, Link2, Camera, Brain, Wind, Gamepad2, BookOpen, Lightbulb, HelpCircle } from 'lucide-react';
 import { Button } from './ui/button';
@@ -25,6 +31,64 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
   ]);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const musicTracks = [
+    '/ambient-music-1.mp3',
+    '/ambient-music-2.mp3',
+    '/ambient-music-3.mp3',
+    '/ambient-music-4.mp3',
+    '/ambient-music-5.mp3',
+  ];
+
+  // Handle ambient music toggle
+  const handleAmbientMusicToggle = () => {
+    if (audioRef.current) {
+      if (isPlayingMusic) {
+        audioRef.current.pause();
+        setIsPlayingMusic(false);
+      } else {
+        audioRef.current.play().catch(() => {
+          alert('Could not play audio. Make sure you have audio files set up.');
+        });
+        setIsPlayingMusic(true);
+      }
+    }
+  };
+
+  // Handle track ending - move to next track
+  const handleTrackEnd = () => {
+    const nextIndex = (currentTrackIndex + 1) % musicTracks.length;
+    setCurrentTrackIndex(nextIndex);
+  };
+
+  // Cleanup audio on unmount and attach ended listener
+  useEffect(() => {
+    const el = audioRef.current;
+    if (el) {
+      el.addEventListener('ended', handleTrackEnd);
+    }
+
+    return () => {
+      if (el) {
+        el.removeEventListener('ended', handleTrackEnd);
+        el.pause();
+      }
+    };
+  }, []);
+
+  // When the currentTrackIndex changes, update the audio src and play if currently playing
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.src = musicTracks[currentTrackIndex];
+    audioRef.current.load();
+    if (isPlayingMusic) {
+      audioRef.current.play().catch(() => {
+        console.error('Could not autoplay next track');
+      });
+    }
+  }, [currentTrackIndex]);
 
   // Send message to backend and update chat
   const sendMessageToBackend = async (msg: string) => {
@@ -53,8 +117,8 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
         themeMode === 'dynamic'
           ? 'from-blue-950 via-gray-900 to-green-950'
           : themeMode === 'light'
-          ? 'from-blue-50 via-gray-50 to-green-50'
-          : 'from-blue-950 via-gray-900 to-green-950',
+            ? 'from-blue-50 via-gray-50 to-green-50'
+            : 'from-blue-950 via-gray-900 to-green-950',
       accent: 'from-blue-500 to-green-500',
       glow: 'shadow-blue-500/20',
       border: themeMode === 'light' ? 'border-blue-300' : 'border-blue-500/30',
@@ -63,8 +127,8 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
       bg: themeMode === 'dynamic'
         ? 'from-amber-950 via-gray-900 to-yellow-950'
         : themeMode === 'light'
-        ? 'from-amber-50 via-gray-50 to-yellow-50'
-        : 'from-amber-950 via-gray-900 to-yellow-950',
+          ? 'from-amber-50 via-gray-50 to-yellow-50'
+          : 'from-amber-950 via-gray-900 to-yellow-950',
       accent: 'from-amber-500 to-yellow-500',
       glow: 'shadow-amber-500/20',
       border: themeMode === 'light' ? 'border-amber-300' : 'border-amber-500/30',
@@ -73,8 +137,8 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
       bg: themeMode === 'dynamic'
         ? 'from-orange-950 via-gray-900 to-red-950'
         : themeMode === 'light'
-        ? 'from-orange-50 via-gray-50 to-red-50'
-        : 'from-orange-950 via-gray-900 to-red-950',
+          ? 'from-orange-50 via-gray-50 to-red-50'
+          : 'from-orange-950 via-gray-900 to-red-950',
       accent: 'from-orange-500 to-red-500',
       glow: 'shadow-orange-500/20',
       border: themeMode === 'light' ? 'border-orange-300' : 'border-orange-500/30',
@@ -150,9 +214,8 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
     >
       <div className="max-w-6xl mx-auto space-y-6">
         {/* State Control Panel */}
-        <div className={`${
-          themeMode === 'light' ? 'bg-white/90' : 'bg-white/5'
-        } backdrop-blur-xl border ${theme.border} rounded-2xl p-6 shadow-2xl ${theme.glow}`}>
+        <div className={`${themeMode === 'light' ? 'bg-white/90' : 'bg-white/5'
+          } backdrop-blur-xl border ${theme.border} rounded-2xl p-6 shadow-2xl ${theme.glow}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Brain className={`w-8 h-8 ${themeMode === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
@@ -170,13 +233,12 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                 onClick={() => setCognitiveState(state)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className={`px-6 py-4 rounded-xl border-2 transition-all capitalize ${
-                  cognitiveState === state
-                    ? `bg-gradient-to-r ${stateThemes[state].accent} border-white/30 shadow-lg text-white`
-                    : themeMode === 'light'
+                className={`px-6 py-4 rounded-xl border-2 transition-all capitalize ${cognitiveState === state
+                  ? `bg-gradient-to-r ${stateThemes[state].accent} border-white/30 shadow-lg text-white`
+                  : themeMode === 'light'
                     ? 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
                     : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
-                }`}
+                  }`}
               >
                 {state}
               </motion.button>
@@ -195,7 +257,7 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                   key={intervention.id}
                   onClick={() => {
                     if (intervention.id === 'ambient-music') {
-                      setIsPlayingMusic(!isPlayingMusic);
+                      handleAmbientMusicToggle();
                     } else {
                       setActiveModal(intervention.id);
                     }
@@ -213,9 +275,8 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
         </div>
 
         {/* Chat Interface */}
-        <div className={`${
-          themeMode === 'light' ? 'bg-white/90' : 'bg-white/5'
-        } backdrop-blur-xl border ${theme.border} rounded-2xl shadow-2xl ${theme.glow} flex flex-col h-[500px]`}>
+        <div className={`${themeMode === 'light' ? 'bg-white/90' : 'bg-white/5'
+          } backdrop-blur-xl border ${theme.border} rounded-2xl shadow-2xl ${theme.glow} flex flex-col h-[500px]`}>
           {/* Chat History */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <AnimatePresence>
@@ -227,15 +288,33 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-                      msg.role === 'user'
-                        ? `bg-gradient-to-r ${theme.accent} text-white`
-                        : themeMode === 'light'
+                    className={`max-w-[80%] px-4 py-3 rounded-2xl ${msg.role === 'user'
+                      ? `bg-gradient-to-r ${theme.accent} text-white`
+                      : themeMode === 'light'
                         ? 'bg-gray-200 text-gray-900'
                         : 'bg-white/10 text-gray-200'
-                    }`}
+                      }`}
                   >
-                    {msg.content}
+                    {msg.role === 'assistant' ? (
+                      <ReactMarkdown
+                        children={msg.content}
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeRaw, rehypeSanitize, rehypeHighlight]}
+                        components={{
+                          a: ({ node, ...props }: any) => (
+                            <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline" />
+                          ),
+                          code: ({ node, inline, className, children, ...props }: any) => {
+                            if (inline) return <code className="bg-white/5 px-1 rounded" {...props}>{children}</code>;
+                            return (
+                              <pre className="rounded bg-gray-900 p-3 overflow-auto"><code className={className} {...props}>{children}</code></pre>
+                            );
+                          },
+                        }}
+                      />
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -246,23 +325,23 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
           <div className={`border-t p-4 ${themeMode === 'light' ? 'border-gray-300' : 'border-white/10'}`}>
             <div className="flex items-center gap-3">
               <div className="flex gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className={themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white'}
                 >
                   <Paperclip className="w-6 h-6" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className={themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white'}
                 >
                   <Link2 className="w-6 h-6" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className={themeMode === 'light' ? 'text-gray-600 hover:text-black' : 'text-gray-400 hover:text-white'}
                 >
                   <Camera className="w-6 h-6" />
@@ -275,11 +354,10 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 placeholder="Ask me anything..."
-                className={`flex-1 px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${
-                  themeMode === 'light'
-                    ? 'bg-gray-100 border-gray-300 text-black placeholder-gray-500'
-                    : 'bg-white/5 border-white/10 text-white placeholder-gray-500'
-                }`}
+                className={`flex-1 px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${themeMode === 'light'
+                  ? 'bg-gray-100 border-gray-300 text-black placeholder-gray-500'
+                  : 'bg-white/5 border-white/10 text-white placeholder-gray-500'
+                  }`}
               />
 
               <Button
@@ -318,6 +396,13 @@ export function LearningZone({ cognitiveState, setCognitiveState, userType, addX
         isOpen={activeModal === 'mini-game'}
         onClose={() => setActiveModal(null)}
         addXP={addXP}
+      />
+      {/* Hidden audio element for ambient music */}
+      <audio
+        ref={audioRef}
+        src={musicTracks[currentTrackIndex]}
+        style={{ position: 'absolute', left: -9999, width: 0, height: 0 }}
+        onEnded={handleTrackEnd}
       />
     </motion.div>
   );

@@ -38,7 +38,7 @@ FALLBACK_MODEL = "gemini-2.0-flash-lite"
 GEN_CFG = {
     "temperature": 0.5,
     "top_p": 0.9,
-    "max_output_tokens": 350,
+    "max_output_tokens": 800,
 }
 
 MEM_PATH = Path("neuro_memory.json")
@@ -77,6 +77,10 @@ def call_model(prompt: str, model: str = PRIMARY_MODEL, cfg: dict | None = None)
             gen = genai.GenerativeModel(model, generation_config=cfg)
             result = gen.generate_content(prompt)
         reply = clean(getattr(result, "text", "") or "")
+        finish_reason = getattr(result, "finish_reason", "unknown")
+        print(
+            f"[DEBUG] Model: {model}, Finish reason: {finish_reason}, Reply length: {len(reply)}"
+        )
         if reply:
             return reply
     except Exception as exc:  # pragma: no cover - external service
@@ -98,7 +102,7 @@ def call_model(prompt: str, model: str = PRIMARY_MODEL, cfg: dict | None = None)
     if last_error:
         try:
             with HideStderr():
-                short_cfg = {"max_output_tokens": 120}
+                short_cfg = {"max_output_tokens": 300}
                 gen = genai.GenerativeModel(FALLBACK_MODEL, generation_config=short_cfg)
                 result = gen.generate_content("Short: " + prompt[:200])
             reply = clean(getattr(result, "text", "") or "")
@@ -110,7 +114,9 @@ def call_model(prompt: str, model: str = PRIMARY_MODEL, cfg: dict | None = None)
     return f"Model unavailable: {last_error or 'unknown error'}"
 
 
-def adaptive(profile: str, state: str, user_input: str, history: str | None = None) -> str:
+def adaptive(
+    profile: str, state: str, user_input: str, history: str | None = None
+) -> str:
     base = f"""
 You are the NeuroAdaptive Learning Companion.
 
@@ -143,7 +149,10 @@ Give:
 
     else:
         ask_analogy = random.random() < 0.20
-        conceptual = any(word in user_input.lower() for word in ["what", "why", "how", "explain", "define", "concept"])
+        conceptual = any(
+            word in user_input.lower()
+            for word in ["what", "why", "how", "explain", "define", "concept"]
+        )
 
         base += "Give:\n1) Balanced explanation.\n"
 

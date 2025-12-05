@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Trophy, Award, Zap, Sun, Moon, Brain } from 'lucide-react';
+import { Trophy, Award, Zap, Sun, Moon, Brain, LogOut } from 'lucide-react';
 import { UserProfile, CognitiveState, ThemeMode } from '../App';
 import { AvatarPreview } from './AvatarPreview';
 import { Button } from './ui/button';
@@ -11,9 +11,10 @@ interface GamificationHeaderProps {
   cognitiveState: CognitiveState;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
+  onLogout?: () => void;
 }
 
-export function GamificationHeader({ userProfile, cognitiveState, themeMode, setThemeMode }: GamificationHeaderProps) {
+export function GamificationHeader({ userProfile, cognitiveState, themeMode, setThemeMode, onLogout }: GamificationHeaderProps) {
   const xpPercentage = (userProfile.xp / userProfile.xpToNextLevel) * 100;
 
   const stateColors = {
@@ -30,11 +31,10 @@ export function GamificationHeader({ userProfile, cognitiveState, themeMode, set
   const [isBCIModalOpen, setBCIModalOpen] = useState(false);
 
   return (
-    <div className={`${
-      themeMode === 'light' 
-        ? 'bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100 border-b border-gray-200' 
-        : 'bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-white/10'
-    } px-6 py-4`}>
+    <div className={`${themeMode === 'light'
+      ? 'bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100 border-b border-gray-200'
+      : 'bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-white/10'
+      } px-6 py-4`}>
       <div className="flex items-center justify-between">
         {/* Left: Welcome Message */}
         <div>
@@ -52,20 +52,18 @@ export function GamificationHeader({ userProfile, cognitiveState, themeMode, set
           <Button
             onClick={() => setBCIModalOpen(true)}
             variant="outline"
-            className={`flex items-center gap-2 ${
-              themeMode === 'light'
-                ? 'border-purple-300 text-purple-700 hover:bg-purple-50'
-                : 'border-purple-500/50 text-purple-400 hover:bg-purple-500/20'
-            }`}
+            className={`flex items-center gap-2 ${themeMode === 'light'
+              ? 'border-purple-300 text-purple-700 hover:bg-purple-50'
+              : 'border-purple-500/50 text-purple-400 hover:bg-purple-500/20'
+              }`}
           >
             <Brain className="w-5 h-5" />
             <span className="hidden md:inline">BCI</span>
           </Button>
 
           {/* Theme Switcher */}
-          <div className={`flex items-center gap-1 p-1 rounded-xl ${
-            themeMode === 'light' ? 'bg-gray-200' : 'bg-white/10'
-          }`}>
+          <div className={`flex items-center gap-1 p-1 rounded-xl ${themeMode === 'light' ? 'bg-gray-200' : 'bg-white/10'
+            }`}>
             {(['light', 'dark'] as ThemeMode[]).map((mode) => {
               const Icon = themeIcons[mode];
               return (
@@ -74,15 +72,14 @@ export function GamificationHeader({ userProfile, cognitiveState, themeMode, set
                   onClick={() => setThemeMode(mode)}
                   variant="ghost"
                   size="icon"
-                  className={`h-8 w-8 transition-all ${
-                    themeMode === mode
-                      ? themeMode === 'light'
-                        ? 'bg-white text-blue-600 shadow-md'
-                        : 'bg-purple-600 text-white'
-                      : themeMode === 'light'
+                  className={`h-8 w-8 transition-all ${themeMode === mode
+                    ? themeMode === 'light'
+                      ? 'bg-white text-blue-600 shadow-md'
+                      : 'bg-purple-600 text-white'
+                    : themeMode === 'light'
                       ? 'text-gray-500 hover:text-gray-900'
                       : 'text-gray-400 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                 </Button>
@@ -93,11 +90,10 @@ export function GamificationHeader({ userProfile, cognitiveState, themeMode, set
           {/* Level */}
           <motion.div
             whileHover={{ scale: 1.05 }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl ${
-              themeMode === 'light'
-                ? 'bg-purple-100 border border-purple-200'
-                : 'bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl ${themeMode === 'light'
+              ? 'bg-purple-100 border border-purple-200'
+              : 'bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30'
+              }`}
           >
             <Trophy className={`w-6 h-6 ${themeMode === 'light' ? 'text-yellow-600' : 'text-yellow-400'}`} />
             <div>
@@ -117,9 +113,8 @@ export function GamificationHeader({ userProfile, cognitiveState, themeMode, set
                 {userProfile.xp} / {userProfile.xpToNextLevel}
               </span>
             </div>
-            <div className={`h-2 rounded-full overflow-hidden ${
-              themeMode === 'light' ? 'bg-gray-200' : 'bg-gray-700'
-            }`}>
+            <div className={`h-2 rounded-full overflow-hidden ${themeMode === 'light' ? 'bg-gray-200' : 'bg-gray-700'
+              }`}>
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${xpPercentage}%` }}
@@ -135,11 +130,10 @@ export function GamificationHeader({ userProfile, cognitiveState, themeMode, set
           {/* Badges */}
           <motion.div
             whileHover={{ scale: 1.05 }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl ${
-              themeMode === 'light'
-                ? 'bg-pink-100 border border-pink-200'
-                : 'bg-gradient-to-r from-pink-600/20 to-purple-600/20 border border-pink-500/30'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl ${themeMode === 'light'
+              ? 'bg-pink-100 border border-pink-200'
+              : 'bg-gradient-to-r from-pink-600/20 to-purple-600/20 border border-pink-500/30'
+              }`}
           >
             <Award className={`w-6 h-6 ${themeMode === 'light' ? 'text-pink-600' : 'text-pink-400'}`} />
             <div>
@@ -147,6 +141,21 @@ export function GamificationHeader({ userProfile, cognitiveState, themeMode, set
               <div className={themeMode === 'light' ? 'text-black' : 'text-white'}>{userProfile.badges}</div>
             </div>
           </motion.div>
+
+          {/* Logout Button */}
+          {onLogout && (
+            <Button
+              onClick={onLogout}
+              variant="outline"
+              className={`flex items-center gap-2 ${themeMode === 'light'
+                ? 'border-red-300 text-red-700 hover:bg-red-50'
+                : 'border-red-500/50 text-red-400 hover:bg-red-500/20'
+                }`}
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="hidden md:inline">Logout</span>
+            </Button>
+          )}
 
           {/* Avatar Preview */}
           <AvatarPreview avatar={userProfile.avatar} size="small" />
